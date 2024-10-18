@@ -100,7 +100,20 @@ export default function Index() {
             </Text>
           </Pressable>
         </Link>
-
+        <Link href="/notification" style={styles.button} asChild>
+          <Pressable>
+            <Text style={styles.buttonText}>
+              Notification
+            </Text>
+          </Pressable>
+        </Link>
+        <Link href="/contact" style={styles.button} asChild>
+          <Pressable>
+            <Text style={styles.buttonText}>
+              Contato
+            </Text>
+          </Pressable>
+        </Link>
 
         <Modal
           animationType="slide"
@@ -146,6 +159,7 @@ export default function Index() {
                 <Pressable style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                   <Text style={styles.cancelButtonText}>Cancelar</Text>
                 </Pressable>
+                
               </View>
 
             </View>
@@ -220,4 +234,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
   },
+  button: {
+    padding: 15,
+    borderRadius: 10,
+    width: "95%",
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF3737',
+  },
+  buttonText: {
+    fontSize: 22,
+    textAlign: 'center',
+    color: '#FFF',
+  },
 });
+
