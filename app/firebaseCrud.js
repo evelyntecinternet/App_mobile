@@ -1,15 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, ScrollView, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, ScrollView, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from './firebaseConfig'; // Importa o Firestore configurado
+import * as Notifications from 'expo-notifications';
 
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
 export default function App() {
     const [users, setUsers] = useState([]);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
 
-    // Função para buscar dados da coleção "users" no Firestore
+    const Notification = async () => {
+        const {status} = await  Notifications.requestPermissionsAsync();
+        if (status !== 'granted'){
+            const { status: newStatus} = await Notifications.getPermissionsAsync();
+            if (newStatus !== 'granted'){
+                Alert.alert('Permissão de notificação Negada!');
+                return;    
+            }
+        }
+    };
+
+    const sendNotification = async () => {
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: name,
+                body: 'Notificação Recebida com Sucesso!!!',
+            },
+            //trigger: { seconds: 1},
+            trigger: null
+        });
+    };
+
     const fetchUsers = async () => {
         try {
             const usersCollection = collection(db, 'users');
@@ -21,48 +50,36 @@ export default function App() {
         }
     };
 
-    // Função para adicionar um novo usuário no Firestore
     const addUser = async () => {
         if (!name) {
             Alert.alert('Erro', 'O nome não pode ser nulo');
             return;
         }
         try {
-            const newUser = {
-                name,
-                email,
-                phone
-            };
-            // Adiciona o novo usuário à coleção "users"
+            const newUser = { name, email, phone };
             await addDoc(collection(db, 'users'), newUser);
-            // Limpa o formulário
+            fetchUsers();
+            sendNotification();
             setName('');
             setEmail('');
             setPhone('');
-            // Atualiza a lista de usuários
-            fetchUsers();
+            
         } catch (error) {
             console.error("Erro ao adicionar usuário: ", error);
         }
     };
 
-    // Função para deletar um usuário do Firestore
     const deleteUser = async (userId) => {
         Alert.alert(
             'Confirmar',
             'Você tem certeza que deseja deletar este usuário?',
             [
-                {
-                    text: 'Cancelar',
-                    style: 'cancel'
-                },
+                { text: 'Cancelar', style: 'cancel' },
                 {
                     text: 'Deletar',
                     onPress: async () => {
                         try {
-                            // Deleta o documento pelo ID
                             await deleteDoc(doc(db, 'users', userId));
-                            // Atualiza a lista de usuários
                             fetchUsers();
                         } catch (error) {
                             console.error("Erro ao deletar usuário: ", error);
@@ -73,7 +90,6 @@ export default function App() {
         );
     };
 
-    // Executa a função ao carregar o componente
     useEffect(() => {
         fetchUsers();
     }, []);
@@ -81,66 +97,40 @@ export default function App() {
     return (
         <ScrollView style={styles.container}>
             <Text style={styles.title}>Usuários do Firestore</Text>
-            
-            {/* Formulário para adicionar um novo usuário */}
             <View style={styles.form}>
-                <TextInput
-                    placeholder="Nome"
-                    value={name}
-                    /* onChangeText={setName} : enquanto vc vai escrevendo no campo, ele vai
-                    salvando na varíavel   */
-                    onChangeText={setName}
-                    style={styles.input}
-                />
-                <TextInput
-                    placeholder="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    style={styles.input}
-                    keyboardType="email-address"
-                />
-                <TextInput
-                    placeholder="Telefone"
-                    value={phone}
-                    onChangeText={setPhone}
-                    style={styles.input}
-                    keyboardType="phone-pad"
-                />
-                <Button title="Adicionar Usuário" onPress={addUser} />
+                <TextInput placeholder="Nome" value={name} onChangeText={setName} style={styles.input} />
+                <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
+                <TextInput placeholder="Telefone" value={phone} onChangeText={setPhone} style={styles.input} keyboardType="phone-pad" />
+                <TouchableOpacity style={styles.button} onPress={addUser}>
+                    <Text style={styles.buttonText}>Adicionar Usuário</Text>
+                </TouchableOpacity>
             </View>
-
-            {/* Renderiza os usuários do Firestore */}
             {users.map(user => (
                 <View key={user.id} style={styles.userCard}>
-                    {user.name && (
-                        <Text style={styles.userName}>Nome: {user.name}</Text>
-                    )}
-                    {user.email && (
-                        <Text>Email: {user.email}</Text>
-                    )}
-                    {user.phone && (
-                        <Text>Telefone: {user.phone}</Text>
-                    )}
-                    {/* Botão para deletar o usuário */}
-                    <Button title="Deletar" onPress={() => deleteUser(user.id)} color="red" />
+                    {user.name && <Text style={styles.userName}>Nome: {user.name}</Text>}
+                    {user.email && <Text>Email: {user.email}</Text>}
+                    {user.phone && <Text>Telefone: {user.phone}</Text>}
+                    <TouchableOpacity style={styles.deleteButton} onPress={() => deleteUser(user.id)}>
+                        <Text style={styles.buttonText}>Deletar</Text>
+                    </TouchableOpacity>
                 </View>
             ))}
         </ScrollView>
     );
 }
 
-// Estilos
 const styles = StyleSheet.create({
     container: {
         padding: 20,
-        backgroundColor: '#F2F2F2',
-        flex: 1
+        backgroundColor: '#EAEAEA',
+        flex: 1,
     },
     title: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 'bold',
         marginBottom: 20,
-        textAlign: 'center'
+        textAlign: 'center',
+        color: '#333',
     },
     form: {
         marginVertical: 20,
@@ -150,7 +140,7 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 1,
+            height: 2,
         },
         shadowOpacity: 0.2,
         shadowRadius: 1.41,
@@ -158,11 +148,11 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderColor: '#BFBFBF',
+        borderColor: '#C0C0C0',
         padding: 10,
         marginBottom: 10,
         borderRadius: 5,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: '#FAFAFA',
     },
     userCard: {
         marginVertical: 10,
@@ -172,14 +162,33 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 1,
+            height: 2,
         },
         shadowOpacity: 0.2,
         shadowRadius: 1.41,
         elevation: 2,
     },
     userName: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    button: {
+        backgroundColor: '#28A745',
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    deleteButton: {
+        backgroundColor: '#DC3545',
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

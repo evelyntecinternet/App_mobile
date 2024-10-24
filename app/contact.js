@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, TextInput, Image, TouchableOpacity, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, TextInput, Image, TouchableOpacity, Button, Modal } from 'react-native';
 import * as Contacts from 'expo-contacts';
 
 export default function ContactsScreen() {
@@ -9,6 +9,8 @@ export default function ContactsScreen() {
     const [selectedContact, setSelectedContact] = useState(null);
     const [favorites, setFavorites] = useState([]);
     const [messageHistory, setMessageHistory] = useState([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [newImageUri, setNewImageUri] = useState('');
 
     useEffect(() => {
         const fetchContacts = async () => {
@@ -16,7 +18,7 @@ export default function ContactsScreen() {
 
             if (status === 'granted') {
                 const { data } = await Contacts.getContactsAsync({
-                    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+                    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
                 });
 
                 if (data.length > 0) {
@@ -48,14 +50,29 @@ export default function ContactsScreen() {
 
     const handleContactPress = (contact) => {
         setSelectedContact(contact);
+        setModalVisible(true); // Abre o modal ao clicar no contato
     };
 
     const sendMessage = () => {
         if (selectedContact) {
             alert(`Mensagem enviada para ${selectedContact.name}!`);
-            setMessageHistory(prev => [...prev, { name: selectedContact.name, number: selectedContact.phoneNumbers ? selectedContact.phoneNumbers[0].number : 'N/A' }]);
+            setMessageHistory(prev => [
+                ...prev,
+                {
+                    name: selectedContact.name,
+                    number: selectedContact.phoneNumbers ? selectedContact.phoneNumbers[0].number : 'N/A',
+                },
+            ]);
             setSelectedContact(null); // Limpa a seleção após o envio da mensagem
+            setModalVisible(false); // Fecha o modal
         }
+    };
+
+    const changeContactImage = () => {
+        // Aqui você poderia implementar a lógica para selecionar uma nova imagem
+        // Usar uma imagem fixa para demonstração
+        setNewImageUri('https://via.placeholder.com/50');
+        alert(`Imagem do contato ${selectedContact.name} alterada!`);
     };
 
     const toggleFavorite = (contactId) => {
@@ -82,8 +99,8 @@ export default function ContactsScreen() {
     const renderContact = ({ item }) => (
         <TouchableOpacity onPress={() => handleContactPress(item)}>
             <View style={styles.contactItem}>
-                <Image 
-                    source={{ uri: 'https://via.placeholder.com/50' }} 
+                <Image
+                    source={{ uri: item.image ? item.image.uri : 'https://via.placeholder.com/50' }}
                     style={styles.contactImage}
                 />
                 <View style={styles.contactInfo}>
@@ -124,11 +141,19 @@ export default function ContactsScreen() {
                 style={styles.list}
             />
             {selectedContact && (
-                <View style={styles.messageContainer}>
-                    <Text style={styles.messageTitle}>Enviar Mensagem para {selectedContact.name}</Text>
-                    <Text style={styles.detail}>Telefone: {selectedContact.phoneNumbers ? selectedContact.phoneNumbers[0].number : 'N/A'}</Text>
-                    <Button title="Enviar Mensagem" onPress={sendMessage} />
-                </View>
+                <Modal
+                    transparent={true}
+                    visible={modalVisible}
+                    animationType="slide"
+                >
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.messageTitle}>Opções para {selectedContact.name}</Text>
+                        <Text style={styles.detail}>Telefone: {selectedContact.phoneNumbers ? selectedContact.phoneNumbers[0].number : 'N/A'}</Text>
+                        <Button title="Enviar Mensagem" onPress={sendMessage} />
+                        <Button title="Alterar Imagem" onPress={changeContactImage} />
+                        <Button title="Fechar" onPress={() => setModalVisible(false)} />
+                    </View>
+                </Modal>
             )}
             {messageHistory.length > 0 && (
                 <View style={styles.historyContainer}>
@@ -200,12 +225,13 @@ const styles = StyleSheet.create({
         width: '100%',
         paddingHorizontal: 10,
     },
-    messageContainer: {
-        marginTop: 20,
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'white',
         padding: 20,
-        borderRadius: 5,
-        backgroundColor: '#e0e0e0',
-        width: '100%',
+        borderRadius: 10,
     },
     messageTitle: {
         fontSize: 20,
